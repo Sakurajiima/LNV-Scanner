@@ -1,0 +1,26 @@
+#ALL necessary imports are here
+import nmap 
+
+
+
+#This is the main scanning loop. Gets called whenever an IP is scanned
+def Main_Scanning_Loop(scanned_network):
+    nm_scan = nmap.PortScanner()
+    nm_scan.scan(hosts = scanned_network, arguments = '-sV -T4')
+
+    network_info = {}
+    for host in nm_scan.all_hosts():
+        #Logs only 'up' hosts, makes key of dictionary
+        if nm_scan[host].state() == 'up':
+            network_info[host] = []
+            #Scans protocols on the host, logs them to the relevant IP
+            for protcl in nm_scan[host].all_protocols():
+                ports = nm_scan[host][protcl].keys()
+                #Uses the Scanned protocols to obtain Service name and Version
+                for port in ports:
+                    service = nm_scan[host][protcl][port]['name']
+                    version = nm_scan[host][protcl][port]['version']
+                    #Filters 'unknown', adds relevevant info to the dictionary stripping what isnt needed
+                    if service and service != 'unkown':
+                        network_info[host].append(f"{service} {version}".strip())
+    return network_info
