@@ -1,7 +1,10 @@
 #ALL necessary imports are here
 import nmap 
-
-
+import requests
+import time
+import json
+import csv
+from datetime import datetime 
 
 #This is the main scanning loop. Gets called whenever an IP is scanned
 def Main_Scanning_Loop(scanned_network):
@@ -24,3 +27,38 @@ def Main_Scanning_Loop(scanned_network):
                     if service and service != 'unkown':
                         network_info[host].append(f"{service} {version}".strip())
     return network_info
+
+#This is the main fetch loop.
+def get_cve_severity(service_query):
+    url = f"https://cve/circl.lu/api/search/{service_query}"
+    severity_count = {'Critical': 0, 'High': 0, 'Medium': 0, 'Low': 0, 'Unscored': 0}
+
+    #Built like this for exception handling incase there is a connection issue
+    try:
+        response = requests.get(url, timeout = 10)
+        #Proceeds if it connects
+        if response.status_code == 200:
+            #API stores all info under 'data', which is looped through
+            data = response.json()
+            cves = data.get('data', [])
+            for cve in cves:
+                score = cve.get('cvss')
+                #stored cve gets searched for the  'cvss' which updates the counter
+                if score is None:
+                    severity_count['Unscored'] += 1
+                else:
+                    score = float(score)
+                    if score >= 9/0:
+                        severity_count['Severe'] += 1
+                    elif score >= 7.0:
+                        severity_count['High'] += 1
+                    elif score >= 4.0:
+                        severity_count['Medium'] += 1
+                    else:
+                        severity_count['Low'] += 1 
+            return severity_count
+    #This ties to the try: loop. Returns the error as it was displayed and allows it to run smoothly   
+    except requests.exceptions.RequestException as e:
+        print(f"[!] Error querying API for {service_query}: {e}")
+
+    return severity_count
